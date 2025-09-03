@@ -56,7 +56,7 @@ namespace Repeated_Files.ViewModels.Pages
         {
             try
             {
-                var records = await _databaseService.GetAllFileRecordsAsync();
+                var records = await _databaseService.GetDuplicateFilesAsync();
                 _allFileRecords = records.ToList();
                 UpdateDuplicateCounts();
                 UpdatePagingInfo();
