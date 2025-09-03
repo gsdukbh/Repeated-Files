@@ -153,36 +153,24 @@ namespace Repeated_Files.Services
                 switch (_hashAlgorithm)
                 {
                     case FileHashAlgorithm.MD5:
-                        using (var md5 = MD5.Create())
                         {
-                            int read;
-                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
-                            {
-                                md5.TransformBlock(buffer, 0, read, null, 0);
-                            }
-                            md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-                            return Convert.ToHexString(md5.Hash!);
+                            byte[] hashBytes = await MD5.HashDataAsync(fs);
+                            return Convert.ToHexString(hashBytes);
                         }
                     case FileHashAlgorithm.XxHash64:
                         {
                             var hasher = new XxHash64();
-                            int read;
-                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
-                            {
-                                hasher.Append(buffer.AsSpan(0, read));
-                            }
-                            var hash = hasher.GetCurrentHash();
+                            await hasher.AppendAsync(fs);
+                            
+                            byte[] hash = hasher.GetHashAndReset(); 
                             return Convert.ToHexString(hash);
                         }
                     case FileHashAlgorithm.XxHash128:
                         {
                             var hasher = new XxHash128();
-                            int read;
-                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
-                            {
-                                hasher.Append(buffer.AsSpan(0, read));
-                            }
-                            var hash = hasher.GetCurrentHash();
+                            await hasher.AppendAsync(fs); 
+
+                            byte[] hash = hasher.GetHashAndReset(); 
                             return Convert.ToHexString(hash);
                         }
                     default:
