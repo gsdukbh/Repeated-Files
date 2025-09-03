@@ -94,10 +94,17 @@ namespace Repeated_Files.ViewModels.Pages
         {
             TotalItems = _allFileRecords.Count;
             TotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalItems / PageSize));
-            CurrentPage = Math.Min(CurrentPage, TotalPages);
+            
+            // 确保当前页在有效范围内
+            if (CurrentPage > TotalPages) CurrentPage = TotalPages;
             if (CurrentPage < 1) CurrentPage = 1;
+            
             JumpToPageNumber = CurrentPage;
             PageInfo = $"第 {CurrentPage} 页，共 {TotalPages} 页";
+            
+            // 通知分页按钮状态变化
+            OnPropertyChanged(nameof(CanGoToPreviousPage));
+            OnPropertyChanged(nameof(CanGoToNextPage));
         }
 
         /// <summary>
@@ -267,8 +274,6 @@ namespace Repeated_Files.ViewModels.Pages
                 CurrentPage--;
                 UpdatePagingInfo();
                 LoadCurrentPageData();
-                OnPropertyChanged(nameof(CanGoToPreviousPage));
-                OnPropertyChanged(nameof(CanGoToNextPage));
             }
         }
 
@@ -283,8 +288,6 @@ namespace Repeated_Files.ViewModels.Pages
                 CurrentPage++;
                 UpdatePagingInfo();
                 LoadCurrentPageData();
-                OnPropertyChanged(nameof(CanGoToPreviousPage));
-                OnPropertyChanged(nameof(CanGoToNextPage));
             }
         }
 
@@ -294,11 +297,12 @@ namespace Repeated_Files.ViewModels.Pages
         [RelayCommand]
         private void FirstPage()
         {
-            CurrentPage = 1;
-            UpdatePagingInfo();
-            LoadCurrentPageData();
-            OnPropertyChanged(nameof(CanGoToPreviousPage));
-            OnPropertyChanged(nameof(CanGoToNextPage));
+            if (CurrentPage != 1)
+            {
+                CurrentPage = 1;
+                UpdatePagingInfo();
+                LoadCurrentPageData();
+            }
         }
 
         /// <summary>
@@ -307,11 +311,12 @@ namespace Repeated_Files.ViewModels.Pages
         [RelayCommand]
         private void LastPage()
         {
-            CurrentPage = TotalPages;
-            UpdatePagingInfo();
-            LoadCurrentPageData();
-            OnPropertyChanged(nameof(CanGoToPreviousPage));
-            OnPropertyChanged(nameof(CanGoToNextPage));
+            if (CurrentPage != TotalPages)
+            {
+                CurrentPage = TotalPages;
+                UpdatePagingInfo();
+                LoadCurrentPageData();
+            }
         }
 
         /// <summary>
@@ -320,13 +325,11 @@ namespace Repeated_Files.ViewModels.Pages
         [RelayCommand]
         private void JumpToPage()
         {
-            if (JumpToPageNumber >= 1 && JumpToPageNumber <= TotalPages)
+            if (JumpToPageNumber >= 1 && JumpToPageNumber <= TotalPages && JumpToPageNumber != CurrentPage)
             {
                 CurrentPage = JumpToPageNumber;
                 UpdatePagingInfo();
                 LoadCurrentPageData();
-                OnPropertyChanged(nameof(CanGoToPreviousPage));
-                OnPropertyChanged(nameof(CanGoToNextPage));
             }
         }
 
@@ -340,20 +343,7 @@ namespace Repeated_Files.ViewModels.Pages
                 CurrentPage = 1; // 重置到第一页
                 UpdatePagingInfo();
                 LoadCurrentPageData();
-                OnPropertyChanged(nameof(CanGoToPreviousPage));
-                OnPropertyChanged(nameof(CanGoToNextPage));
             }
-        }
-
-        /// <summary>
-        /// 当前页码变化时更新分页信息
-        /// </summary>
-        partial void OnCurrentPageChanged(int value)
-        {
-            UpdatePagingInfo();
-            LoadCurrentPageData();
-            OnPropertyChanged(nameof(CanGoToPreviousPage));
-            OnPropertyChanged(nameof(CanGoToNextPage));
         }
 
         /// <summary>

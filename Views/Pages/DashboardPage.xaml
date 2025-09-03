@@ -44,7 +44,7 @@
             <TextBox Margin="5,0" Text="{Binding ViewModel.JumpToPageNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Width="60" />
             <ui:Button Margin="2" Content="跳转" Command="{Binding ViewModel.JumpToPageCommand}" />
             <TextBlock Margin="20,0,5,0" VerticalAlignment="Center" Text="每页显示:" />
-            <ComboBox Margin="0,0,5,0" Width="60" Height="25" SelectedItem="{Binding ViewModel.PageSize, Mode=TwoWay}" VerticalContentAlignment="Center">
+            <ComboBox Margin="0,0,5,0"  SelectedItem="{Binding ViewModel.PageSize, Mode=TwoWay}" VerticalContentAlignment="Center">
                 <ComboBoxItem Content="10" />
                 <ComboBoxItem Content="20" />
                 <ComboBoxItem Content="50" />
