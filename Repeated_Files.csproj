@@ -21,6 +21,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="System.IO.Hashing" Version="9.0.8" />
         <PackageReference Include="WPF-UI" Version="4.0.2"/>
         <PackageReference Include="WPF-UI.DependencyInjection" Version="4.0.2"/>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1"/>

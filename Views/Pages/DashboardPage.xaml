@@ -23,120 +23,78 @@
         <helpers:DuplicateFileCountConverter x:Key="DuplicateFileCountConverter" />
     </Page.Resources>
 
-    <Grid VerticalAlignment="Top">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <!-- 使用 DockPanel 让分页栏固定底部 -->
+    <DockPanel LastChildFill="True">
+        <!-- 分页操作栏 固定底部 -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10">
+            <ui:Button Margin="2" Command="{Binding ViewModel.FirstPageCommand}" IsEnabled="{Binding ViewModel.CanGoToPreviousPage}" ToolTip="第一页" >
+                <ui:SymbolIcon Symbol="Home16" />
+            </ui:Button>
+            <ui:Button Margin="2" Command="{Binding ViewModel.PreviousPageCommand}" IsEnabled="{Binding ViewModel.CanGoToPreviousPage}" ToolTip="上一页" >
+                <ui:SymbolIcon Symbol="ArrowLeft16" />
+            </ui:Button>
+            <ui:Button Margin="2" Command="{Binding ViewModel.NextPageCommand}" IsEnabled="{Binding ViewModel.CanGoToNextPage}" ToolTip="下一页" >
+                <ui:SymbolIcon Symbol="ArrowRight16" />
+            </ui:Button>
+            <ui:Button Margin="2" Command="{Binding ViewModel.LastPageCommand}" IsEnabled="{Binding ViewModel.CanGoToNextPage}" ToolTip="最后一页" >
+                <ui:SymbolIcon Symbol="ArrowStepInRight16" />
+            </ui:Button>
+            <TextBlock Margin="10,0" VerticalAlignment="Center" Text="{Binding ViewModel.PageInfo}" FontWeight="SemiBold" />
+            <TextBlock Margin="5,0" VerticalAlignment="Center" Text="跳转到:" />
+            <TextBox Margin="5,0" Text="{Binding ViewModel.JumpToPageNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Width="60" />
+            <ui:Button Margin="2" Content="跳转" Command="{Binding ViewModel.JumpToPageCommand}" />
+            <TextBlock Margin="20,0,5,0" VerticalAlignment="Center" Text="每页显示:" />
+            <ComboBox Margin="0,0,5,0" Width="60" Height="25" SelectedItem="{Binding ViewModel.PageSize, Mode=TwoWay}" VerticalContentAlignment="Center">
+                <ComboBoxItem Content="10" />
+                <ComboBoxItem Content="20" />
+                <ComboBoxItem Content="50" />
+                <ComboBoxItem Content="100" />
+            </ComboBox>
+            <TextBlock Margin="0,0,5,0" VerticalAlignment="Center" Text="条" />
+        </StackPanel>
 
-        <!-- 控制面板 -->
-        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="10">
-
-
+        <!-- 顶部区域：按钮、进度、统计信息 -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Margin="10">
             <!-- 按钮组 -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <ui:Button
-                    Margin="5"
-                    Command="{Binding ViewModel.SelectFolderCommand, Mode=OneWay}"
-                    Content="选择目录"
-                    Icon="Folder24"
-                    Appearance="Primary" />
-
-                <ui:Button
-                    Margin="5"
-                    Command="{Binding ViewModel.ScanDiffFilesCommand, Mode=OneWay}"
-                    Content="开始扫描"
-                    Icon="Search24"
-                    IsEnabled="{Binding ViewModel.IsScanning, Converter={StaticResource InverseBooleanConverter}}" />
-
-                <ui:Button
-                    Margin="5"
-                    Command="{Binding ViewModel.DeleteSelectedFilesCommand, Mode=OneWay}"
-                    Content="删除选中"
-                    Icon="Delete24"
-                    Appearance="Danger" />
-
-                <ui:Button
-                    Margin="5"
-                    Command="{Binding ViewModel.ClearAllRecordsCommand, Mode=OneWay}"
-                    Content="清空记录"
-                    Icon="Clear24" />
+                <ui:Button Margin="5" Command="{Binding ViewModel.SelectFolderCommand, Mode=OneWay}" Content="选择目录" Icon="Folder24" Appearance="Primary" />
+                <ui:Button Margin="5" Command="{Binding ViewModel.ScanDiffFilesCommand, Mode=OneWay}" Content="开始扫描" Icon="Search24" IsEnabled="{Binding ViewModel.IsScanning, Converter={StaticResource InverseBooleanConverter}}" />
+                <ui:Button Margin="5" Command="{Binding ViewModel.DeleteSelectedFilesCommand, Mode=OneWay}" Content="删除选中" Icon="Delete24" Appearance="Danger" />
+                <ui:Button Margin="5" Command="{Binding ViewModel.ClearAllRecordsCommand, Mode=OneWay}" Content="清空记录" Icon="Clear24" />
             </StackPanel>
-
             <!-- 路径显示 -->
-            <TextBlock
-                Margin="5"
-                VerticalAlignment="Center"
-                Text="{Binding ViewModel.PathToScan, Mode=OneWay, StringFormat='扫描路径: {0}'}"
-                FontWeight="SemiBold" />
-
+            <TextBlock Margin="5" VerticalAlignment="Center" Text="{Binding ViewModel.PathToScan, Mode=OneWay, StringFormat='扫描路径: {0}'}" FontWeight="SemiBold" />
             <!-- 进度信息 -->
-            <TextBlock
-                Margin="5"
-                VerticalAlignment="Center"
-                Text="{Binding ViewModel.ScanProgress, Mode=OneWay}"
-                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            <TextBlock Margin="5" VerticalAlignment="Center" Text="{Binding ViewModel.ScanProgress, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             <!-- 进度条 -->
-            <ProgressBar IsIndeterminate="{Binding ViewModel.IsScanning, Mode=OneWay}"
-                         Visibility="{Binding ViewModel.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}"
-                         Margin="0,0,0,10" />
+            <ProgressBar IsIndeterminate="{Binding ViewModel.IsScanning, Mode=OneWay}" Visibility="{Binding ViewModel.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,10" />
+            <!-- 统计信息 -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="{Binding ViewModel.FileRecords.Count, StringFormat='总文件数: {0}'}" Margin="0,0,20,0" />
+                <TextBlock Text="{Binding ViewModel.FileRecords, Converter={StaticResource DuplicateFileCountConverter}, StringFormat='重复文件数: {0}'}" Margin="0,0,20,0" />
+            </StackPanel>
         </StackPanel>
 
-        <!-- 统计信息 -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,10,10">
-            <TextBlock Text="{Binding ViewModel.FileRecords.Count, StringFormat='总文件数: {0}'}" Margin="0,0,20,0" />
-            <TextBlock
-                Text="{Binding ViewModel.FileRecords, Converter={StaticResource DuplicateFileCountConverter}, StringFormat='重复文件数: {0}'}"
-                Margin="0,0,20,0" />
-        </StackPanel>
-
-        <!-- 文件列表 -->
-        <ui:DataGrid Grid.Row="2"
-                     Margin="10"
-                     ItemsSource="{Binding ViewModel.FileRecords, Mode=OneWay}"
-                     SelectedItem="{Binding ViewModel.SelectedFileRecord, Mode=TwoWay}"
-                     AutoGenerateColumns="False"
-                     CanUserAddRows="False"
-                     CanUserDeleteRows="False"
-                     IsReadOnly="False"
-                     SelectionMode="Extended"
-                     SelectionUnit="FullRow"
-                     GridLinesVisibility="Horizontal"
-                     RowHeaderWidth="0">
+        <!-- 中间填充：文件列表 -->
+        <ui:DataGrid Margin="10" ItemsSource="{Binding ViewModel.FileRecords, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedFileRecord, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False" SelectionMode="Extended" SelectionUnit="FullRow" GridLinesVisibility="Horizontal" RowHeaderWidth="0">
             <DataGrid.ContextMenu>
                 <ContextMenu>
-                    <MenuItem
-                        Command="{Binding ViewModel.RightSelectCommand}"
-                        Header="打开文件目录" />
-
+                    <MenuItem Command="{Binding ViewModel.RightSelectCommand}" Header="打开文件目录" />
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
                 <!-- 复选框列 -->
-                <DataGridCheckBoxColumn
-                    Binding="{Binding Path=IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                    IsReadOnly="False"
-                    Width="60">
+                <DataGridCheckBoxColumn Binding="{Binding Path=IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="False" Width="60">
                     <DataGridCheckBoxColumn.HeaderTemplate>
                         <DataTemplate>
-                            <CheckBox
-                                Content="全选"
-                                FontWeight="Normal"
-                                IsChecked="{Binding DataContext.ViewModel.IsAllSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Page}}">
-                            </CheckBox>
+                            <CheckBox Content="全选" FontWeight="Normal" IsChecked="{Binding DataContext.ViewModel.IsAllSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Page}}" />
                         </DataTemplate>
                     </DataGridCheckBoxColumn.HeaderTemplate>
                 </DataGridCheckBoxColumn>
-
-                <DataGridTextColumn Header="文件名" Binding="{Binding FileName}" Width="200" />
-
+                <DataGridTextColumn Header="文件名" Binding="{Binding FileName}"  />
                 <DataGridTextColumn Header="文件路径" Binding="{Binding FilePath}" Width="*" />
-
                 <DataGridTextColumn Header="文件大小" Binding="{Binding FileSizeFormatted}" Width="100" />
-
-                <DataGridTextColumn Header="重复次数" Binding="{Binding DuplicateCount}" Width="80">
+                <DataGridTextColumn Header="重复次数" Binding="{Binding DuplicateCount}" Width="100">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Style.Triggers>
@@ -151,104 +109,8 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-
-                <DataGridTextColumn Header="最后修改时间" Binding="{Binding LastModified}" Width="150" />
-
-
+                <DataGridTextColumn Header="最后修改时间" Binding="{Binding LastModified}"  />
             </DataGrid.Columns>
-
         </ui:DataGrid>
-
-        <!-- 分页操作栏 -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Margin="10">
-
-            <ui:Button
-                Margin="2"
-                Command="{Binding ViewModel.FirstPageCommand}"
-                IsEnabled="{Binding ViewModel.CanGoToPreviousPage}"
-                ToolTip="第一页" >
-                <ui:SymbolIcon
-                    Symbol="Home16" />
-            </ui:Button>
-
-
-            <ui:Button
-                Margin="2"
-                Command="{Binding ViewModel.PreviousPageCommand}"
-                IsEnabled="{Binding ViewModel.CanGoToPreviousPage}"
-                ToolTip="上一页" >
-                <ui:SymbolIcon
-                    Symbol="ArrowLeft16" />
-            </ui:Button>
-
-            <ui:Button
-                Margin="2"
-                Command="{Binding ViewModel.NextPageCommand}"
-                IsEnabled="{Binding ViewModel.CanGoToNextPage}"
-                ToolTip="下一页" >
-                <ui:SymbolIcon
-                    Symbol="ArrowRight16" />
-            </ui:Button>
-            
-            <ui:Button
-                Margin="2"
-                Command="{Binding ViewModel.LastPageCommand}"
-                IsEnabled="{Binding ViewModel.CanGoToNextPage}"
-                ToolTip="最后一页" >
-                <ui:SymbolIcon
-                    Symbol="ArrowStepInRight16" />
-            </ui:Button>
-            
-            
-            <TextBlock
-                Margin="10,0"
-                VerticalAlignment="Center"
-                Text="{Binding ViewModel.PageInfo}"
-                FontWeight="SemiBold" />
-
-
-            <TextBlock
-                Margin="5,0"
-                VerticalAlignment="Center"
-                Text="跳转到:" />
-
-            <TextBox
-                Margin="5,0"
-                Text="{Binding ViewModel.JumpToPageNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                VerticalContentAlignment="Center"
-                HorizontalContentAlignment="Center" />
-
-            <ui:Button
-                Margin="2"
-                Content="跳转"
-                Command="{Binding ViewModel.JumpToPageCommand}"
-            />
-            
-
-            <!-- 每页显示数量 -->
-            <TextBlock
-                Margin="20,0,5,0"
-                VerticalAlignment="Center"
-                Text="每页显示:" />
-
-            <ComboBox
-                Margin="0,0,5,0"
-                Width="60"
-                Height="25"
-                SelectedItem="{Binding ViewModel.PageSize, Mode=TwoWay}"
-                VerticalContentAlignment="Center">
-                <ComboBoxItem Content="10" />
-                <ComboBoxItem Content="20" />
-                <ComboBoxItem Content="50" />
-                <ComboBoxItem Content="100" />
-            </ComboBox>
-
-            <TextBlock
-                Margin="0,0,5,0"
-                VerticalAlignment="Center"
-                Text="条" />
-        </StackPanel>
-
-    </Grid>
+    </DockPanel>
 </Page>

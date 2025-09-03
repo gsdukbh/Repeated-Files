@@ -3,9 +3,21 @@ using System.Security.Cryptography;
 using System.Text;
 using Repeated_Files.Models;
 using Repeated_Files.Services;
+using System.Buffers; // 新增
+using System.IO.Hashing; // 新增 XxHash
 
 namespace Repeated_Files.Services
 {
+    /// <summary>
+    /// 可选文件哈希算法
+    /// </summary>
+    public enum FileHashAlgorithm
+    {
+        MD5,
+        XxHash64,
+        XxHash128
+    }
+
     /// <summary>
     /// 文件扫描服务
     /// </summary>
@@ -25,6 +37,11 @@ namespace Repeated_Files.Services
         /// 查找重复文件
         /// </summary>
         Task FindDuplicateFilesAsync();
+
+        /// <summary>
+        /// 设置文件哈希算法
+        /// </summary>
+        void SetHashAlgorithm(FileHashAlgorithm algorithm); // 新增
     }
 
     /// <summary>
@@ -33,11 +50,14 @@ namespace Repeated_Files.Services
     public class FileScanService : IFileScanService
     {
         private readonly IDatabaseService _databaseService;
+        private FileHashAlgorithm _hashAlgorithm = FileHashAlgorithm.XxHash128; 
 
         public FileScanService(IDatabaseService databaseService)
         {
             _databaseService = databaseService;
         }
+
+        public void SetHashAlgorithm(FileHashAlgorithm algorithm) => _hashAlgorithm = algorithm;
 
         /// <summary>
         /// 扫描目录中的文件
@@ -113,14 +133,66 @@ namespace Repeated_Files.Services
         }
 
         /// <summary>
-        /// 计算文件哈希值
+        /// 计算文件哈希值（支持 MD5, XxHash64, XxHash128），采用异步顺序读取 + 大缓冲 + ArrayPool 优化大文件性能。
         /// </summary>
         public async Task<string> CalculateFileHashAsync(string filePath)
         {
-            using var md5 = MD5.Create();
-            using var stream = File.OpenRead(filePath);
-            var hashBytes = await Task.Run(() => md5.ComputeHash(stream));
-            return Convert.ToHexString(hashBytes);
+            const int bufferSize = 1024 * 1024; // 1MB，可按需调大 2~4MB 做 A/B 测试
+            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            try
+            {
+                // 顺序异步读取优化
+                await using var fs = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+                switch (_hashAlgorithm)
+                {
+                    case FileHashAlgorithm.MD5:
+                        using (var md5 = MD5.Create())
+                        {
+                            int read;
+                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
+                            {
+                                md5.TransformBlock(buffer, 0, read, null, 0);
+                            }
+                            md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                            return Convert.ToHexString(md5.Hash!);
+                        }
+                    case FileHashAlgorithm.XxHash64:
+                        {
+                            var hasher = new XxHash64();
+                            int read;
+                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
+                            {
+                                hasher.Append(buffer.AsSpan(0, read));
+                            }
+                            var hash = hasher.GetCurrentHash();
+                            return Convert.ToHexString(hash);
+                        }
+                    case FileHashAlgorithm.XxHash128:
+                        {
+                            var hasher = new XxHash128();
+                            int read;
+                            while ((read = await fs.ReadAsync(buffer.AsMemory(0, bufferSize))) > 0)
+                            {
+                                hasher.Append(buffer.AsSpan(0, read));
+                            }
+                            var hash = hasher.GetCurrentHash();
+                            return Convert.ToHexString(hash);
+                        }
+                    default:
+                        throw new NotSupportedException($"不支持的哈希算法: {_hashAlgorithm}");
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         /// <summary>

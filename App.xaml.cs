@@ -13,6 +13,9 @@ using Repeated_Files.Views.Pages;
 using Repeated_Files.Views.Windows;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
+using System; // 新增
+using System.Threading; // 单例所需
+using System.Windows; // MessageBox
 
 namespace Repeated_Files
 {
@@ -21,6 +24,10 @@ namespace Repeated_Files
     /// </summary>
     public partial class App
     {
+        // 单实例互斥锁
+        private static Mutex? _instanceMutex;
+        private const string MutexName = "Global/Repeated_Files_Single_Instance"; // 保证全局唯一
+
         // .NET 通用主机提供依赖注入、配置、日志记录和其他服务。
         // https://docs.microsoft.com/dotnet/core/extensions/generic-host
         // https://docs.microsoft.com/dotnet/core/extensions/dependency-injection
@@ -57,8 +64,6 @@ namespace Repeated_Files
                 // 包含导航的服务，与 INavigationWindow 相同...但没有窗口
                 services.AddSingleton<INavigationService, NavigationService>();
 
-
-
                 // 带导航的主窗口
                 services.AddSingleton<INavigationWindow, MainWindow>();
                 services.AddSingleton<MainWindowViewModel>();
@@ -83,6 +88,17 @@ namespace Repeated_Files
         /// </summary>
         private async void OnStartup(object sender, StartupEventArgs e)
         {
+            // 创建/检测单实例
+            bool created;
+            _instanceMutex = new Mutex(true, MutexName, out created);
+            if (!created)
+            {
+                // 已有实例在运行
+                System.Windows.MessageBox.Show("程序已在运行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
             await _host.StartAsync();
         }
 
@@ -94,6 +110,18 @@ namespace Repeated_Files
             await _host.StopAsync();
 
             _host.Dispose();
+
+            // 释放互斥锁
+            if (_instanceMutex != null)
+            {
+                try
+                {
+                    _instanceMutex.ReleaseMutex();
+                }
+                catch { }
+                _instanceMutex.Dispose();
+                _instanceMutex = null;
+            }
         }
 
         /// <summary>
