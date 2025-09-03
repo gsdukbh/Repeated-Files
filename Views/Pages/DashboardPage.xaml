@@ -190,6 +190,17 @@
                 <ui:SymbolIcon
                     Symbol="ArrowRight16" />
             </ui:Button>
+            
+            <ui:Button
+                Margin="2"
+                Command="{Binding ViewModel.LastPageCommand}"
+                IsEnabled="{Binding ViewModel.CanGoToNextPage}"
+                ToolTip="最后一页" >
+                <ui:SymbolIcon
+                    Symbol="ArrowStepInRight16" />
+            </ui:Button>
+            
+            
             <TextBlock
                 Margin="10,0"
                 VerticalAlignment="Center"
@@ -204,8 +215,6 @@
 
             <TextBox
                 Margin="5,0"
-                Width="50"
-                Height="25"
                 Text="{Binding ViewModel.JumpToPageNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 VerticalContentAlignment="Center"
                 HorizontalContentAlignment="Center" />
@@ -216,14 +225,6 @@
                 Command="{Binding ViewModel.JumpToPageCommand}"
             />
             
-            <ui:Button
-                Margin="2"
-                Command="{Binding ViewModel.LastPageCommand}"
-                IsEnabled="{Binding ViewModel.CanGoToNextPage}"
-                ToolTip="最后一页" >
-                <ui:SymbolIcon
-                    Symbol="ArrowStepInRight16" />
-            </ui:Button>
 
             <!-- 每页显示数量 -->
             <TextBlock
