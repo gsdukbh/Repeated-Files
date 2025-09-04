@@ -17,24 +17,27 @@ namespace Repeated_Files.ViewModels.Pages
         private readonly IFileScanService _fileScanService;
 
         [ObservableProperty] private string _pathToScan = string.Empty;
-        [ObservableProperty]
-        private ObservableCollection<FileRecord> _fileRecords = new();
-        
+        [ObservableProperty] private ObservableCollection<FileRecord> _fileRecords = new();
+
+        // 新增：分组显示相关属性
+        [ObservableProperty] private ObservableCollection<FileGroup> _fileGroups = new();
+
         [ObservableProperty] private bool _isScanning;
         [ObservableProperty] private string _scanProgress = string.Empty;
         [ObservableProperty] private bool _isAllSelected;
-        
+
         // 分页相关属性
         [ObservableProperty] private int _currentPage = 1;
-        [ObservableProperty] private int _pageSize = 20;
+        [ObservableProperty] private int _pageSize = 10;
         [ObservableProperty] private int _totalPages = 1;
         [ObservableProperty] private int _totalItems = 0;
         [ObservableProperty] private int _jumpToPageNumber = 1;
         [ObservableProperty] private string _pageInfo = "第 1 页，共 1 页";
-        
+
         // 完整的文件记录集合（用于分页）
         private List<FileRecord> _allFileRecords = new();
-        
+        private List<FileGroup> _allFileGroups = new();
+
         // 分页相关计算属性
         public bool CanGoToPreviousPage => CurrentPage > 1;
         public bool CanGoToNextPage => CurrentPage < TotalPages;
@@ -59,6 +62,7 @@ namespace Repeated_Files.ViewModels.Pages
                 var records = await _databaseService.GetDuplicateFilesAsync();
                 _allFileRecords = records.ToList();
                 UpdateDuplicateCounts();
+                BuildFileGroups();
                 UpdatePagingInfo();
                 LoadCurrentPageData();
             }
@@ -66,6 +70,28 @@ namespace Repeated_Files.ViewModels.Pages
             {
                 ScanProgress = $"加载文件记录失败: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// 构建文件分组
+        /// </summary>
+        private void BuildFileGroups()
+        {
+            var groupedFiles = _allFileRecords
+                .GroupBy(f => f.FileName)
+                .Select(g => new FileGroup
+                {
+                    FileName = g.Key,
+                    FileCount = g.Count(),
+                    Files = new ObservableCollection<FileLocationItem>(
+                        g.Select(f => new FileLocationItem { FileRecord = f })
+                    )
+                })
+                .OrderByDescending(g => g.FileCount) // 重复文件排在前面
+                .ThenBy(g => g.FileName)
+                .ToList();
+
+            _allFileGroups = groupedFiles;
         }
 
         /// <summary>
@@ -77,7 +103,7 @@ namespace Repeated_Files.ViewModels.Pages
                 .Where(f => !string.IsNullOrEmpty(f.FileHash))
                 .GroupBy(f => f.FileHash)
                 .Where(g => g.Count() > 1);
-            
+
             foreach (var group in duplicateGroups)
             {
                 foreach (var file in group)
@@ -92,16 +118,16 @@ namespace Repeated_Files.ViewModels.Pages
         /// </summary>
         private void UpdatePagingInfo()
         {
-            TotalItems = _allFileRecords.Count;
+            TotalItems = _allFileGroups.Count;
             TotalPages = Math.Max(1, (int)Math.Ceiling((double)TotalItems / PageSize));
-            
+
             // 确保当前页在有效范围内
             if (CurrentPage > TotalPages) CurrentPage = TotalPages;
             if (CurrentPage < 1) CurrentPage = 1;
-            
+
             JumpToPageNumber = CurrentPage;
             PageInfo = $"第 {CurrentPage} 页，共 {TotalPages} 页";
-            
+
             // 通知分页按钮状态变化
             OnPropertyChanged(nameof(CanGoToPreviousPage));
             OnPropertyChanged(nameof(CanGoToNextPage));
@@ -113,12 +139,22 @@ namespace Repeated_Files.ViewModels.Pages
         private void LoadCurrentPageData()
         {
             var skip = (CurrentPage - 1) * PageSize;
-            var currentPageItems = _allFileRecords.Skip(skip).Take(PageSize).ToList();
-            
-            FileRecords.Clear();
+            var currentPageItems = _allFileGroups.Skip(skip).Take(PageSize).ToList();
+
+            FileGroups.Clear();
             foreach (var item in currentPageItems)
             {
-                FileRecords.Add(item);
+                FileGroups.Add(item);
+            }
+
+            // 同时更新原有的FileRecords集合以保持兼容性
+            FileRecords.Clear();
+            foreach (var group in currentPageItems)
+            {
+                foreach (var fileItem in group.Files)
+                {
+                    FileRecords.Add(fileItem.FileRecord);
+                }
             }
         }
 
@@ -161,7 +197,7 @@ namespace Repeated_Files.ViewModels.Pages
             {
                 var progress = new Progress<string>(message => ScanProgress = message);
                 await _fileScanService.ScanDirectoryAsync(PathToScan, progress);
-                
+
                 ScanProgress = "扫描完成，正在刷新数据...";
                 LoadFileRecords();
                 ScanProgress = "扫描完成";
@@ -181,9 +217,12 @@ namespace Repeated_Files.ViewModels.Pages
         /// </summary>
         partial void OnIsAllSelectedChanged(bool value)
         {
-            foreach (var record in FileRecords)
+            foreach (var group in FileGroups)
             {
-                record.IsChecked = value;
+                foreach (var fileItem in group.Files)
+                {
+                    fileItem.IsChecked = value;
+                }
             }
         }
 
@@ -193,7 +232,12 @@ namespace Repeated_Files.ViewModels.Pages
         [RelayCommand]
         private async Task DeleteSelectedFiles()
         {
-            var selectedFiles = FileRecords.Where(f => f.IsChecked).ToList();
+            var selectedFiles = FileGroups
+                .SelectMany(g => g.Files)
+                .Where(f => f.IsChecked)
+                .Select(f => f.FileRecord)
+                .ToList();
+
             if (selectedFiles.Count == 0)
             {
                 ScanProgress = "请选择要删除的文件";
@@ -226,9 +270,10 @@ namespace Repeated_Files.ViewModels.Pages
                         ScanProgress = $"删除文件失败 {file.FileName}: {ex.Message}";
                     }
                 }
-                
+
                 ScanProgress = $"成功删除 {deletedCount} 个文件";
                 UpdateDuplicateCounts();
+                BuildFileGroups();
                 UpdatePagingInfo();
                 LoadCurrentPageData();
             }
@@ -252,7 +297,9 @@ namespace Repeated_Files.ViewModels.Pages
                 {
                     await _databaseService.ClearAllFileRecordsAsync();
                     _allFileRecords.Clear();
+                    _allFileGroups.Clear();
                     FileRecords.Clear();
+                    FileGroups.Clear();
                     UpdatePagingInfo();
                     ScanProgress = "已清空所有记录";
                 }
@@ -350,9 +397,10 @@ namespace Repeated_Files.ViewModels.Pages
         /// 打开文件所在目录
         /// </summary>
         [RelayCommand]
-        private void RightSelect()
+        private void RightSelect(FileRecord? fileRecord)
         {
-            if (SelectedFileRecord?.FilePath == null)
+            var targetFile = fileRecord ?? SelectedFileRecord;
+            if (targetFile?.FilePath == null)
             {
                 ScanProgress = "请先选择一个文件";
                 return;
@@ -360,14 +408,14 @@ namespace Repeated_Files.ViewModels.Pages
 
             try
             {
-                if (File.Exists(SelectedFileRecord.FilePath))
+                if (File.Exists(targetFile.FilePath))
                 {
                     // 在资源管理器中打开并选中文件
-                    Process.Start("explorer.exe", $"/select,\"{SelectedFileRecord.FilePath}\"");
+                    Process.Start("explorer.exe", $"/select,\"{targetFile.FilePath}\"");
                 }
                 else
                 {
-                    ScanProgress = $"文件不存在: {SelectedFileRecord.FilePath}";
+                    ScanProgress = $"文件不存在: {targetFile.FilePath}";
                 }
             }
             catch (Exception ex)

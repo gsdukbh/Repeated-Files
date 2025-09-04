@@ -70,47 +70,91 @@
             <ProgressBar IsIndeterminate="{Binding ViewModel.IsScanning, Mode=OneWay}" Visibility="{Binding ViewModel.IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,10" />
             <!-- 统计信息 -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="{Binding ViewModel.FileGroups.Count, StringFormat='文件组数: {0}'}" Margin="0,0,20,0" />
                 <TextBlock Text="{Binding ViewModel.FileRecords.Count, StringFormat='总文件数: {0}'}" Margin="0,0,20,0" />
                 <TextBlock Text="{Binding ViewModel.FileRecords, Converter={StaticResource DuplicateFileCountConverter}, StringFormat='重复文件数: {0}'}" Margin="0,0,20,0" />
             </StackPanel>
         </StackPanel>
 
-        <!-- 中间填充：文件列表 -->
-        <ui:DataGrid Margin="10" ItemsSource="{Binding ViewModel.FileRecords, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedFileRecord, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="False" SelectionMode="Extended" SelectionUnit="FullRow" GridLinesVisibility="Horizontal" RowHeaderWidth="0">
-            <DataGrid.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Command="{Binding ViewModel.RightSelectCommand}" Header="打开文件目录" />
-                </ContextMenu>
-            </DataGrid.ContextMenu>
-            <DataGrid.Columns>
-                <!-- 复选框列 -->
-                <DataGridCheckBoxColumn Binding="{Binding Path=IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="False" Width="60">
-                    <DataGridCheckBoxColumn.HeaderTemplate>
-                        <DataTemplate>
-                            <CheckBox Content="全选" FontWeight="Normal" IsChecked="{Binding DataContext.ViewModel.IsAllSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType=Page}}" />
-                        </DataTemplate>
-                    </DataGridCheckBoxColumn.HeaderTemplate>
-                </DataGridCheckBoxColumn>
-                <DataGridTextColumn Header="文件名" Binding="{Binding FileName}"  />
-                <DataGridTextColumn Header="文件路径" Binding="{Binding FilePath}" Width="*" />
-                <DataGridTextColumn Header="文件大小" Binding="{Binding FileSizeFormatted}" Width="100" />
-                <DataGridTextColumn Header="重复次数" Binding="{Binding DuplicateCount}" Width="100">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding DuplicateCount}" Value="0">
-                                    <Setter Property="Text" Value="-" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsDuplicate}" Value="True">
-                                    <Setter Property="Foreground" Value="Red" />
-                                    <Setter Property="FontWeight" Value="Bold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="最后修改时间" Binding="{Binding LastModified}"  />
-            </DataGrid.Columns>
-        </ui:DataGrid>
+        <!-- 中间填充：文件分组列表 -->
+        <ScrollViewer Margin="10" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <TreeView ItemsSource="{Binding ViewModel.FileGroups}" Background="Transparent" BorderThickness="0">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="Padding" Value="5" />
+                        <Setter Property="Margin" Value="0,2" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsDuplicateGroup}" Value="True">
+                                <Setter Property="Foreground" Value="Red" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                
+                <!-- 文件组模板 -->
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Files}">
+                        <!-- 组头：文件名和数量 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <ui:SymbolIcon Symbol="Document16" Margin="0,0,5,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding FileCount, StringFormat=' ({0} 个文件)'}" 
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                       Margin="5,0" VerticalAlignment="Center" />
+                            <Border Background="Orange" CornerRadius="3" Padding="3,1" Margin="5,0" 
+                                    Visibility="{Binding IsDuplicateGroup, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="重复" Foreground="White"  FontWeight="Bold" />
+                            </Border>
+                        </StackPanel>
+                        
+                        <!-- 文件项模板 -->
+                        <HierarchicalDataTemplate.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="5" Margin="0,1" Background="{DynamicResource ControlFillColorDefaultBrush}" 
+                                        CornerRadius="3" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <!-- 复选框 -->
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                                                  Margin="0,0,10,0" VerticalAlignment="Center" />
+                                        
+                                        <!-- 文件路径 -->
+                                        <TextBlock Grid.Column="1" Text="{Binding FilePath}" 
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding FilePath}" />
+                                        
+                                        <!-- 文件大小 -->
+                                        <TextBlock Grid.Column="2" Text="{Binding FileSizeFormatted}" 
+                                                   Margin="10,0" VerticalAlignment="Center" 
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        
+                                        <!-- 修改时间 -->
+                                        <TextBlock Grid.Column="3" Text="{Binding LastModified, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" 
+                                                   Margin="10,0" VerticalAlignment="Center" 
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        
+                                        <!-- 操作按钮 -->
+                                        <ui:Button Grid.Column="4" Content="打开目录" Margin="10,0,0,0" 
+                                                   VerticalAlignment="Center" Padding="5,2"
+                                                   Command="{Binding DataContext.ViewModel.RightSelectCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                                   CommandParameter="{Binding FileRecord}"
+                                                   ToolTip="在资源管理器中打开文件所在目录" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </HierarchicalDataTemplate.ItemTemplate>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </ScrollViewer>
     </DockPanel>
 </Page>
